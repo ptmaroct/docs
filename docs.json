@@ -39,7 +39,7 @@
             "anchors": [
                 {
                     "anchor": "Launch Bhindi",
-                    "href": "https://bhindi.ai",
+                    "href": "https://bhindi.io",
                     "icon": "book-open-cover"
                 },
                 {
@@ -63,7 +63,7 @@
         "primary": {
             "type": "button",
             "label": "Launch Bhindi",
-            "href": "https://bhindi.ai"
+            "href": "https://bhindi.io"
         }
     },
     "footer": {
