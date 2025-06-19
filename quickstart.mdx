@@ -1,223 +1,288 @@
-# Agent Development Guide
+---
+title: "Quickstart"
+---
 
-This guide explains how to create external agents that integrate with the system. Each agent must implement specific endpoints and follow authentication patterns.
+https://github.com/upsurgeio/bhindi-agent-starter
 
-## Required Structure
+A TypeScript-based agent starter kit that demonstrates both **public calculator tools** and **authenticated GitHub tools**. Perfect for learning agent development with the [Bhindi.io](https://bhindi.io) specification.
 
-Every agent must implement **2 required endpoints (GET /tools and POST /tools/:toolName)**:
+# What is Bhindi?
 
-### 1. GET /tools (Required)
+Bhindi lets you talk to your apps like you talk to a friend.
+Bhindi supports 100\+ integrations and is the easiest way to build AI agents.
 
-Returns available tools for the agent.
+Check a list of integrations available at [Bhindi Agents Directory](https://directory.bhindi.io/)
 
-**Response Type:** `ToolsResponseDto`
+## 📚 Documentation
 
-```typescript
-export class ToolsResponseDto {
-  tools: ToolDto[];
-}
+For comprehensive documentation on building agents, visit the [Bhindi Documentation](https://github.com/upsurgeio/bhindi-docs).
 
-export class ToolDto {
-  name: string; // Tool identifier
-  description: string; // What the tool does
-  parameters: ToolParameterDto; // JSON Schema for parameters
-  confirmationRequired?: boolean; // If true, the tool will require user confirmation
-  credits?: number; // Cost in credits (optional: important for billing costly functions like Image generation, Video generation, etc.)
-}
+## 🎯 What This Starter Kit Demonstrates
 
-export class ToolParameterDto {
-  type: 'object';
-  properties: Record<string, PropertyDto>; // List of properties for the object
-  required?: string[]; // List of required parameters
-}
+This starter kit teaches you how to build agents with:
 
-export class PropertyDto {
-  type: 'string' | 'number' | 'boolean' | 'array' | 'object';
-  description: string;
-  enum?: string[]; // If the parameter is an enum, list the possible values
-  default?: string | number | boolean; // Default value for the parameter
-  items?: PropertyDto; // If the parameter is an array, list the items
-}
-```
+- **Public tools** (Calculator - no authentication required)
+- **Authenticated tools** (GitHub - Bearer token required)
+- **Mixed authentication patterns** in a single agent
+- **Proper parameter validation** using JSON Schema
+- **Advanced features** like `confirmationRequired` and `credits`
+- **Standardized response formats** following agent specification
 
-**Example from Slack Agent:**
+## ✨ Features
 
-```typescript
-tools: [
-  {
-    name: 'sendMessage',
-    description:
-      'Send a message to a Slack user or channel. No need for exact name, it searches through all users and channels. Can directly use this to send message to a user or channel, no need to get the id first if user or channel name is known.',
-    parameters: {
-      type: 'object',
-      properties: {
-        query: {
-          type: 'string',
-          description:
-            'Name of the user/channel to send message to. Can be a user name, channel name, or a channel id. Never pass a user id, always pass a user name or channel name.',
-        },
-        type: {
-          type: 'string',
-          description:
-            'Type of recipient: "user", "channel", "id", or "unknown".',
-          enum: ['user', 'channel', 'id', 'unknown'],
-          default: 'unknown',
-        },
-        text: {
-          type: 'string',
-          description: 'Text content of the message',
-        },
-        threadTs: {
-          type: 'string',
-          description: 'Optional thread timestamp to reply to a thread',
-        },
-      },
-      required: ['query', 'text'],
-    },
-    confirmationRequired: true,
-  },
-];
-```
+### Calculator Tools (No Authentication)
 
-### 2. POST /tools/:toolName (Required)
+- **8 mathematical operations**: Basic arithmetic, power, square root, percentage, factorial
+- **Parameter validation**: Proper error handling for invalid inputs
+- **Confirmation required**: Demonstrates user confirmation for certain operations
+- **Credits system**: Shows cost-based tool execution
 
-Executes a specific tool with provided parameters.
+### GitHub Tools (Authentication Required)
 
-**Parameters:**
+- **Repository listing**: List user's GitHub repositories with Bearer token
+- **Simple REST API**: Uses standard fetch calls (no heavy dependencies)
+- **Authentication demonstration**: Shows how to handle Bearer tokens
 
-- `toolName` (path parameter): Name of the tool to execute
-- Request body: Tool-specific parameters
+### Development Features
 
-**Response Type:** `BaseErrorResponseDto | BaseSuccessResponseDto<any>`
+- **Full TypeScript support** with strict typing
+- **Comprehensive testing** with Jest
+- **ESLint \+ Prettier** for code quality
+- **JSON Schema validation** for parameters
+- **Standardized error handling**
 
-```typescript
-export class BaseErrorResponseDto {
-  success: false;
-  error: {
-    message: string;
-    code: number | string;
-    details: string;
-  };
+## 🚀 Available Tools
 
-  constructor(
-    message: string,
-    code: number | string = 500,
-    details: string = '',
-  ) {
-    this.success = false;
-    this.error = {
-      message,
-      code,
-      details,
-    };
-  }
-}
+### Calculator Tools
 
-export class BaseSuccessResponseDto<T> {
-  success: true;
-  data: {
-    [key: string]: T;
-  };
+| Tool             | Description                         | Special Features                           |
+| ---------------- | ----------------------------------- | ------------------------------------------ |
+| `add`            | Add two numbers                     | Basic operation                            |
+| `subtract`       | Subtract two numbers                | `confirmationRequired: true`               |
+| `multiply`       | Multiply two numbers                | Basic operation                            |
+| `divide`         | Divide two numbers                  | Error handling for division by zero        |
+| `power`          | Calculate a^b                       | Supports negative exponents                |
+| `sqrt`           | Square root                         | Error handling for negative inputs         |
+| `percentage`     | Calculate percentage                | Handles decimal percentages                |
+| `factorial`      | Calculate factorial                 | `credits: 2`, `confirmationRequired: true` |
+| `countCharacter` | Count character occurrences in text | String manipulation                        |
 
-  constructor(data: T) {
-    this.success = true;
-    this.data = data;
-  }
-}
+### GitHub Tools (Private - Auth Required)
 
-export class ResponseMediaItem {
-  type: string;
-  url: string;
-  mimeType: string;
-  description: string;
-  metadata: object;
+| Tool                   | Description              | Authentication        |
+| ---------------------- | ------------------------ | --------------------- |
+| `listUserRepositories` | List user's repositories | Bearer token required |
 
-  constructor(
-    type: string,
-    url: string,
-    mimeType: string,
-    description: string,
-    metadata: object = {},
-  ) {
-    this.type = type;
-    this.url = url;
-    this.mimeType = mimeType;
-    this.description = description;
-    this.metadata = metadata;
-  }
-}
-```
+## 📋 Quick Start
 
-## Authentication
+### 1. Install Dependencies
 
-To let agents use integrations like GitHub, GMail etc from the [Bhindi Agents Directory](https://directory.bhindi.io/), 
-requests to agents include the following headers:
-
-### Basic Authentication
 ```bash
-x-api-key: your-secret-key
+npm install
 ```
 
-- **Required for all endpoints**
-- Used to authenticate the server making the request
-- Every agent must validate this header
+### 2. Build the Project
 
-### OAuth Authentication (Optional)
 ```bash
-x-api-key: your-secret-key
-Authorization: Bearer oauth-token
+npm run build
 ```
 
-- Used for agents requiring user-specific OAuth tokens
-- The `Authorization` header contains the OAuth token for services like Twitter, Slack, GitHub, etc.
-- The `x-api-key` header is still required for server authentication
-- Examples: Twitter agent, Slack agent, GitHub agent
+### 3. Start the Server
 
-### Variable Headers (Optional)
 ```bash
-x-api-key: your-secret-key
-x-dburi: mongodb://connection-string
-x-custom-var: custom-value
+npm start
+# or for development with auto-reload:
+npm run dev
 ```
 
-- Used for agent-specific configuration
-- Pattern: `x-<variablename>` where `variablename` is your custom variable
-- The `x-api-key` header is still required for server authentication
-- Examples:
-  - `x-dburi`: MongoDB connection string for database agents
-  - `x-custom-var`: Any custom configuration your agent needs
+### 4. Test the API
 
-### Implementation Notes
+```bash
+# Get available tools
+curl -X GET "http://localhost:3000/tools"
 
-- **API Key Validation**: Always validate the `x-api-key` header first
-- **OAuth Token Handling**: Extract OAuth tokens from the `Authorization` header when needed
-- **Custom Variables**: Parse custom headers starting with `x-` for agent-specific configuration
-- **Security**: Never log or expose authentication tokens in responses or logs
+# Test calculator (no auth needed)
+curl -X POST "http://localhost:3000/tools/add" \
+  -H "Content-Type: application/json" \
+  -d '{"a": 5, "b": 3}'
 
-## Tool Definition Structure
-
-Each tool in the `ToolsResponseDto` follows this structure:
-
-```typescript
-{
-  name: string;                    // Tool identifier
-  description: string;             // What the tool does
-  parameters: {                    // JSON Schema for parameters
-    type: 'object';
-    properties: Record<string, any>;
-    required?: string[];
-  };
-  visibleParameters?: string[];    // Parameters shown in UI
-  confirmationRequired?: boolean;  // Requires user confirmation
-  credits?: number;               // Cost in credits
-}
+# Test character counting
+curl -X POST "http://localhost:3000/tools/countCharacter" \
+  -H "Content-Type: application/json" \
+  -d '{"character": "s", "text": "strawberrry"}'
 ```
 
-## Best Practices
+## 🧮 Usage Examples
 
-1. **Error Handling**: Always return proper error responses using `BaseErrorResponseDto`
-2. **Parameter Validation**: Validate all input parameters according to the tool schema
-3. **Authentication**: Implement proper guards for API key and OAuth validation
-4. **Documentation**: Provide clear descriptions for tools and parameters
-5. **Response Types**: Use appropriate response types (text, html, media, mixed)
-6. **Confirmation**: Set `confirmationRequired: true` for critical operations
+### Calculator Tools (No Authentication)
+
+```bash
+# Basic addition
+curl -X POST "http://localhost:3000/tools/add" \
+  -H "Content-Type: application/json" \
+  -d '{"a": 10, "b": 5}'
+
+# Division with error handling
+curl -X POST "http://localhost:3000/tools/divide" \
+  -H "Content-Type: application/json" \
+  -d '{"a": 10, "b": 0}'  # Will return error
+
+# Factorial (requires confirmation)
+curl -X POST "http://localhost:3000/tools/factorial" \
+  -H "Content-Type: application/json" \
+  -d '{"number": 5}'
+
+# Percentage calculation
+curl -X POST "http://localhost:3000/tools/percentage" \
+  -H "Content-Type: application/json" \
+  -d '{"percentage": 25, "of": 80}'
+
+# Character counting in text
+curl -X POST "http://localhost:3000/tools/countCharacter" \
+  -H "Content-Type: application/json" \
+  -d '{"character": "s", "text": "strawberrry"}'
+
+# Expected response:
+# {
+#   "success": true,
+#   "responseType": "mixed",
+#   "data": {
+#     "operation": "Count 's' in \"strawberrry\"",
+#     "result": 1,
+#     "message": "Calculated Count 's' in \"strawberrry\" = 1",
+#     "tool_type": "calculator"
+#   }
+# }
+```
+
+### GitHub Tools (Authentication Required)
+
+```bash
+# List repositories (requires GitHub token)
+curl -X POST "http://localhost:3000/tools/listUserRepositories" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_GITHUB_TOKEN" \
+  -d '{"per_page": 5, "sort": "updated"}'
+```
+
+## 🔐 Authentication
+
+This agent demonstrates **hybrid authentication**:
+
+- **Calculator tools**: No authentication required (public)
+- **GitHub tools**: Bearer token authentication required (private)
+
+To learn more about authentication, check out the [Bhindi.io Agent Documentation](https://github.com/upsurgeio/bhindi-docs#-authentication)
+
+## 📚 API Endpoints
+
+- `GET /tools` - Get list of available tools (public)
+- `POST /tools/:toolName` - Execute a specific tool (auth depends on tool type)
+- `GET /health` - Health check endpoint (shows tool authentication requirements)
+- `GET /docs` - Swagger UI documentation (serves `public/swagger.json`)
+
+## 📖 Documentation & Examples
+
+- [**Complete API Examples**](examples.md) - Detailed usage examples for all tools with curl commands
+- **Swagger Documentation** - Available at `/docs` endpoint when server is running
+- **Postman Collection** - Import `Bhind-Agent-Starter.postman_collection.json` for easy testing
+
+## 🏗️ Project Structure
+
+```
+src/
+├── config/
+│   └── tools.json          # Tool definitions with JSON Schema
+├── controllers/
+│   └── appController.ts    # Handles both calculator & GitHub tools
+├── services/
+│   ├── calculatorService.ts # Mathematical operations
+│   └── githubService.ts     # Simple GitHub API calls
+├── routes/
+│   ├── toolsRoutes.ts      # GET /tools endpoint
+│   └── appRoutes.ts        # POST /tools/:toolName endpoint
+├── middlewares/
+│   ├── auth.ts             # Authentication utilities
+│   └── errorHandler.ts     # Error handling middleware
+├── types/
+│   └── agent.ts            # Response type definitions
+├── __tests__/
+│   └── calculatorService.test.ts # Comprehensive tests
+├── app.ts                  # Express app configuration
+└── server.ts              # Server entry point
+```
+
+## 🧪 Development
+
+```bash
+# Run tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Lint code
+npm run lint
+
+# Format code
+npm run format
+
+# Development server with auto-reload
+npm run dev
+```
+
+## 🎓 Learning Objectives
+
+This starter kit teaches you:
+
+1. **Agent Architecture**: How to structure tools and services
+2. **Mixed Authentication**: Public vs authenticated endpoints
+3. **Parameter Validation**: JSON Schema validation patterns
+4. **Error Handling**: Proper error responses and status codes
+5. **Response Formats**: Standardized success/error responses
+6. **Testing**: Comprehensive test coverage patterns
+7. **Tool Features**: `confirmationRequired`, `credits`, parameter types
+
+## 🔧 Advanced Features Demonstrated
+
+- **confirmationRequired**: `subtract` and `factorial` tools
+- **credits**: `factorial` tool costs 2 credits (expensive operation)
+- **Parameter validation**: Type checking and required parameters
+- **Enum parameters**: GitHub tool sort/direction options
+- **Default values**: Optional parameters with defaults
+- **Error handling**: Division by zero, negative square roots, etc.
+- **Mixed response types**: Different data structures for different tools
+
+## 🚀 Next Steps
+
+Once you understand this agent, you can:
+
+1. **Add more calculator functions**: Trigonometry, logarithms, etc.
+2. **Add more authenticated tools**: Twitter, Slack, database operations
+3. **Implement middleware authentication**: Global auth patterns
+4. **Add validation middleware**: Request/response validation
+5. **Add rate limiting**: Protect expensive operations
+6. **Add database integration**: Store calculation history
+
+## 📖 Agent Specification Compliance
+
+This starter follows the [Bhindi.io](https://bhindi.io) agent specification:
+
+- ✅ Required endpoints: `GET /tools`, `POST /tools/:toolName`
+- ✅ Standardized response formats: `BaseSuccessResponseDto`, `BaseErrorResponseDto`
+- ✅ JSON Schema parameter validation
+- ✅ Tool confirmation and credits system
+- ✅ Authentication patterns (Bearer tokens)
+- ✅ Proper error handling and status codes
+
+Perfect for learning how to build production-ready agents\! 🎉
+
+## Need Help?
+
+We're here for you\! You can reach out to us at:
+
+- **Email**: [info@bhindi.io](mailto:info@bhindi.io)
+- **Twitter/X**: [@bhindiai](https://x.com/bhindiai) for the latest updates
+- **Discord**: [Join our community](https://discord.gg/hSfTG33ymy)
+- **Documentation**: [Bhindi Docs](https://github.com/upsurgeio/bhindi-docs)
+- **Website**: [Bhindi.io](https://bhindi.io)
