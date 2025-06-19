@@ -1,11 +1,8 @@
 {
     "$schema": "https://mintlify.com/docs.json",
     "theme": "mint",
-  "modeToggle": {
-  "default": "dark",
-  "isHidden": true
-},
     "name": "Mint Starter Kit",
+  "appearance": {"default": "dark", "strict": true},
     "colors": {
         "primary": "#16A34A",
         "light": "#07C983",
