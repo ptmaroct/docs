@@ -39,18 +39,18 @@
             "anchors": [
                 {
                     "anchor": "Launch Bhindi",
-                    "href": "https://bhindi.io",
-                    "icon": "book-open-cover"
+                    "href": "https://bhindi.ai",
+                    "icon": "arrow-up-right-from-square"
                 },
                 {
                     "anchor": "Discover Agents",
                     "href": "https://directory.bhindi.io/",
-                    "icon": "slack"
+                    "icon": "magnifying-glass"
                 },
                 {
                     "anchor": "Join Community",
                     "href": "https://discord.gg/hSfTG33ymy",
-                    "icon": "book-open-cover"
+                    "icon": "discord"
                 }
             ]
         }
