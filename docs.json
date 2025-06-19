@@ -7,7 +7,7 @@
         "light": "#07C983",
         "dark": "#15803D"
     },
-    "favicon": "/favicon.svg",
+    "favicon": "/favicon.ico",
     "navigation": {
         "tabs": [
             {
@@ -56,8 +56,8 @@
         }
     },
     "logo": {
-        "light": "/logo/light.svg",
-        "dark": "/logo/dark.svg"
+        "light": "/logo/bhindi-logo.webp",
+        "dark": "/logo/bhindi-logo.webp"
     },
     "navbar": {
         "primary": {
