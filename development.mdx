@@ -1,107 +1,234 @@
----
-title: 'Development'
-description: 'Preview changes locally to update your docs'
----
+# Agent Development Guide
 
-<Info>
-  **Prerequisite**: Please install Node.js (version 19 or higher) before proceeding. <br />
-  Please upgrade to ```docs.json``` before proceeding and delete the legacy ```mint.json``` file.
-</Info>
+This guide explains how to create external agents that integrate with the system. Each agent must implement specific endpoints and follow authentication patterns.
 
-Follow these steps to install and run Mintlify on your operating system:
+## Required Structure
 
-**Step 1**: Install Mintlify:
+Every agent must implement **2 required endpoints (GET /tools and POST /tools/:toolName)** and **1 optional endpoint (POST /resource)**:
 
-<CodeGroup>
+### 1. GET /tools (Required)
 
-  ```bash npm
-  npm i -g mintlify
-  ```
+Returns available tools for the agent.
 
-```bash yarn
-yarn global add mintlify
+**Response Type:** `ToolsResponseDto`
+
+```typescript
+export class ToolsResponseDto {
+  tools: ToolDto[];
+}
+
+export class ToolDto {
+  name: string; // Tool identifier
+  description: string; // What the tool does
+  parameters: ToolParameterDto; // JSON Schema for parameters
+  confirmationRequired?: boolean; // If true, the tool will require user confirmation
+  credits?: number; // Cost in credits (optional: important for billing costly functions like Image generation, Video generation, etc.)
+}
+
+export class ToolParameterDto {
+  type: 'object';
+  properties: Record<string, PropertyDto>; // List of properties for the object
+  required?: string[]; // List of required parameters
+}
+
+export class PropertyDto {
+  type: 'string' | 'number' | 'boolean' | 'array' | 'object';
+  description: string;
+  enum?: string[]; // If the parameter is an enum, list the possible values
+  default?: string | number | boolean; // Default value for the parameter
+  items?: PropertyDto; // If the parameter is an array, list the items
+}
 ```
 
-</CodeGroup>
+**Example from Slack Agent:**
 
-**Step 2**: Navigate to the docs directory (where the `docs.json` file is located) and execute the following command:
-
-```bash
-mintlify dev
+```typescript
+tools: [
+  {
+    name: 'sendMessage',
+    description:
+      'Send a message to a Slack user or channel. No need for exact name, it searches through all users and channels. Can directly use this to send message to a user or channel, no need to get the id first if user or channel name is known.',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          description:
+            'Name of the user/channel to send message to. Can be a user name, channel name, or a channel id. Never pass a user id, always pass a user name or channel name.',
+        },
+        type: {
+          type: 'string',
+          description:
+            'Type of recipient: "user", "channel", "id", or "unknown".',
+          enum: ['user', 'channel', 'id', 'unknown'],
+          default: 'unknown',
+        },
+        text: {
+          type: 'string',
+          description: 'Text content of the message',
+        },
+        threadTs: {
+          type: 'string',
+          description: 'Optional thread timestamp to reply to a thread',
+        },
+      },
+      required: ['query', 'text'],
+    },
+    confirmationRequired: true,
+  },
+];
 ```
 
-A local preview of your documentation will be available at `http://localhost:3000`.
+### 2. POST /tools/:toolName (Required)
 
-### Custom Ports
+Executes a specific tool with provided parameters.
 
-By default, Mintlify uses port 3000. You can customize the port Mintlify runs on by using the `--port` flag. To run Mintlify on port 3333, for instance, use this command:
+**Parameters:**
 
-```bash
-mintlify dev --port 3333
+- `toolName` (path parameter): Name of the tool to execute
+- Request body: Tool-specific parameters
+
+**Response Type:** `BaseErrorResponseDto | BaseSuccessResponseDto<any>`
+
+```typescript
+export class BaseErrorResponseDto {
+  success: false;
+  error: {
+    message: string;
+    code: number | string;
+    details: string;
+  };
+
+  constructor(
+    message: string,
+    code: number | string = 500,
+    details: string = '',
+  ) {
+    this.success = false;
+    this.error = {
+      message,
+      code,
+      details,
+    };
+  }
+}
+
+export class BaseSuccessResponseDto<T> {
+  success: true;
+  responseType: string;
+  data: {
+    [key: string]: T;
+  };
+
+  constructor(data: T, responseType: 'text' | 'html' | 'media' | 'mixed') {
+    this.success = true;
+    this.responseType = responseType;
+    if (responseType === 'text') {
+      this.data = {
+        text: data,
+      };
+    } else if (responseType === 'html') {
+      this.data = {
+        html: data,
+      };
+    } else if (responseType === 'media') {
+      this.data = {
+        media: data,
+      };
+    } else if (responseType === 'mixed') {
+      // @ts-expect-error - data is of type T
+      this.data = {
+        ...data,
+      };
+    }
+  }
+}
+
+export class ResponseMediaItem {
+  type: string;
+  url: string;
+  mimeType: string;
+  description: string;
+  metadata: object;
+
+  constructor(
+    type: string,
+    url: string,
+    mimeType: string,
+    description: string,
+    metadata: object = {},
+  ) {
+    this.type = type;
+    this.url = url;
+    this.mimeType = mimeType;
+    this.description = description;
+    this.metadata = metadata;
+  }
+}
 ```
 
-If you attempt to run Mintlify on a port that's already in use, it will use the next available port:
+### 3. POST /resource (Optional)
 
-```md
-Port 3000 is already in use. Trying 3001 instead.
+Provides contextual information about the current user or environment to help the agent work effectively.
+
+**Example Use Cases:**
+
+- GitHub agent: Return user's profile and repositories
+- MongoDB agent: Return database schema information
+- Slack agent: Return user's workspace info and frequent contacts
+
+## Authentication
+
+All requests include authentication headers:
+
+### API Key Authentication
+
+- Header: `x-api-key`
+  - Used to authenticate the server making the request
+  - Required for all endpoints
+
+### OAuth Authentication (Optional)
+
+- Header: `x-api-key`
+  - Used to authenticate the server making the request
+  - Required for all endpoints
+- Header: `Authorization: Bearer <token>`
+  - Used for agents requiring user-specific OAuth tokens
+  - Examples: Twitter, Slack, GitHub agents
+
+### Variable Headers (Optional)
+
+- Header: `x-api-key`
+  - Used to authenticate the server making the request
+  - Required for all endpoints
+- Header: `x-<variablename>`
+  - Used for agent-specific configuration
+  - Example: `x-dburi` for MongoDB agent
+
+## Tool Definition Structure
+
+Each tool in the `ToolsResponseDto` follows this structure:
+
+```typescript
+{
+  name: string;                    // Tool identifier
+  description: string;             // What the tool does
+  parameters: {                    // JSON Schema for parameters
+    type: 'object';
+    properties: Record<string, any>;
+    required?: string[];
+  };
+  visibleParameters?: string[];    // Parameters shown in UI
+  confirmationRequired?: boolean;  // Requires user confirmation
+  credits?: number;               // Cost in credits
+}
 ```
 
-## Mintlify Versions
+## Best Practices
 
-Please note that each CLI release is associated with a specific version of Mintlify. If your local website doesn't align with the production version, please update the CLI:
-
-<CodeGroup>
-
-```bash npm
-npm i -g mintlify@latest
-```
-
-```bash yarn
-yarn global upgrade mintlify
-```
-
-</CodeGroup>
-
-## Validating Links
-
-The CLI can assist with validating reference links made in your documentation. To identify any broken links, use the following command:
-
-```bash
-mintlify broken-links
-```
-
-## Deployment
-
-<Tip>
-  Unlimited editors available under the [Pro
-  Plan](https://mintlify.com/pricing) and above.
-</Tip>
-
-If the deployment is successful, you should see the following:
-
-<Frame>
-  <img src="/images/checks-passed.png" style={{ borderRadius: '0.5rem' }} />
-</Frame>
-
-## Code Formatting
-
-We suggest using extensions on your IDE to recognize and format MDX. If you're a VSCode user, consider the [MDX VSCode extension](https://marketplace.visualstudio.com/items?itemName=unifiedjs.vscode-mdx) for syntax highlighting, and [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode) for code formatting.
-
-## Troubleshooting
-
-<AccordionGroup>
-  <Accordion title='Error: Could not load the "sharp" module using the darwin-arm64 runtime'>
-
-    This may be due to an outdated version of node. Try the following:
-    1. Remove the currently-installed version of mintlify: `npm remove -g mintlify`
-    2. Upgrade to Node v19 or higher.
-    3. Reinstall mintlify: `npm install -g mintlify`
-  </Accordion>
-
-  <Accordion title="Issue: Encountering an unknown error">
-  
-    Solution: Go to the root of your device and delete the \~/.mintlify folder. Afterwards, run `mintlify dev` again.
-  </Accordion>
-</AccordionGroup>
-
-Curious about what changed in the CLI version? [Check out the CLI changelog.](https://www.npmjs.com/package/mintlify?activeTab=versions)
+1. **Error Handling**: Always return proper error responses using `BaseErrorResponseDto`
+2. **Parameter Validation**: Validate all input parameters according to the tool schema
+3. **Authentication**: Implement proper guards for API key and OAuth validation
+4. **Documentation**: Provide clear descriptions for tools and parameters
+5. **Response Types**: Use appropriate response types (text, html, media, mixed)
+6. **Confirmation**: Set `confirmationRequired: true` for critical operations
